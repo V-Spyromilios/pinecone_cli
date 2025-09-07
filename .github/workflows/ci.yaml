@@ -31,14 +31,14 @@ jobs:
           go-version: ${{ env.GO_VERSION }}
           cache: true
 
-      - name: CI (lint + test)
+      - name: Lint + Test
         run: make ci
 
   secret_scan:
     name: Secret Scan (gitleaks)
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout (full history for scan)
+      - name: Checkout (full history)
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -76,10 +76,10 @@ jobs:
     name: Integration Tests (Pinecone)
     runs-on: ubuntu-latest
     needs: [lint_test]
-    if: ${{ secrets.PINECONE_API_KEY != '' }}
+    # Map secrets -> env once at the job level
     env:
       PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
-      PINECONE_INDEX: ${{ secrets.PINECONE_INDEX }}
+      PINECONE_INDEX: ${{ secrets.PINECONE_INDEX_NAME }}
       PINECONE_NAMESPACE: ${{ secrets.PINECONE_NAMESPACE }}
       PINECONE_ENV: "ci"
       HTTP_TIMEOUT: "15s"
@@ -92,5 +92,13 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
-      - name: Run integration tests (tagged)
+          cache: true
+
+      # Guarded by env.* (works at step level)
+      - name: Skip (no Pinecone secret)
+        if: ${{ env.PINECONE_API_KEY == '' }}
+        run: echo "No PINECONE_API_KEY set; skipping integration tests."
+
+      - name: Run integration tests
+        if: ${{ env.PINECONE_API_KEY != '' }}
         run: go test -tags=integration ./... -count=1 -v

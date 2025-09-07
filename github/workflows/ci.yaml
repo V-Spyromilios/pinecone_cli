@@ -1,0 +1,99 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GO_VERSION: "1.23.x"
+  BINARY_NAME: "pinecli"
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  lint_test:
+    name: Lint & Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: CI (lint + test)
+        run: make ci
+
+  secret_scan:
+    name: Secret Scan (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (full history for scan)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        with:
+          args: "--redact"
+
+  build:
+    name: Build Binary
+    runs-on: ubuntu-latest
+    needs: [lint_test]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Build
+        run: make build
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.BINARY_NAME }}-${{ github.sha }}
+          path: bin/${{ env.BINARY_NAME }}
+          if-no-files-found: error
+
+  integration:
+    name: Integration Tests (Pinecone)
+    runs-on: ubuntu-latest
+    needs: [lint_test]
+    if: ${{ env.PINECONE_API_KEY != '' }}
+    env:
+      PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
+      PINECONE_INDEX: ${{ secrets.PINECONE_INDEX }}
+      PINECONE_NAMESPACE: ${{ secrets.PINECONE_NAMESPACE }}
+      PINECONE_ENV: "ci"
+      HTTP_TIMEOUT: "15s"
+      HTTP_MAX_RETRIES: "2"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      # If you add integration tests behind a build tag, they'll simply no-op if none exist.
+      - name: Run integration tests (tagged)
+        run: go test -tags=integration ./... -count=1 -v

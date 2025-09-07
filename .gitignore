@@ -1,0 +1,64 @@
+# ────────────────
+# Go build artifacts
+# ────────────────
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Binaries & build outputs
+bin/
+dist/
+build/
+out/
+
+# Coverage / profiling
+*.prof
+*.cov
+*.cover
+*.coverprofile
+*.cover.out
+pprof/
+heapdump*
+
+# Vendor dependencies (optional; comment if you want to track vendor/)
+vendor/
+
+# ────────────────
+# Editor / IDE settings
+# ────────────────
+.zed/           # Zed editor project settings
+.vscode/        # VS Code settings
+.idea/          # JetBrains GoLand / IntelliJ settings
+*.sublime-*     # Sublime Text
+*.swp           # Vim swap files
+*.swo
+*.swn
+
+# ────────────────
+# OS-specific junk
+# ────────────────
+.DS_Store
+Thumbs.db
+
+# ────────────────
+# Environment & secrets
+# ────────────────
+.env
+.env.*
+*.plist
+*.pem
+*.key
+*.crt
+
+# ────────────────
+# Logs / temp files
+# ────────────────
+*.log
+*.tmp
+*.bak
+*.old
+*.orig
